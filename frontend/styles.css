@@ -78,8 +78,10 @@ button, input, select, textarea {
 
 .platform-shell {
   display: flex;
-  width: 100vw;
+  width: 100%;
   height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
 }
 
 .sidebar {
@@ -295,10 +297,20 @@ button, input, select, textarea {
 }
 
 .topbar-left {
+  flex: 1 1 0%;
   display: flex;
   align-items: center;
   gap: 12px;
   min-width: 0;
+  overflow: hidden;
+}
+.topbar-left > button {
+  flex-shrink: 0;
+}
+.topbar-left > div {
+  flex: 1 1 0%;
+  min-width: 0;
+  overflow: hidden;
 }
 .topbar-left h1 {
   margin: 0;
@@ -306,6 +318,9 @@ button, input, select, textarea {
   font-size: 17px;
   font-weight: 800;
   letter-spacing: -0.02em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .topbar-left p {
   margin: 2px 0 0;
@@ -465,6 +480,7 @@ button, input, select, textarea {
 .workspace-scroll {
   flex: 1;
   overflow-y: auto;
+  overflow-x: hidden;
   padding: 20px 24px 36px;
 }
 .workspace-scroll::-webkit-scrollbar {
@@ -1923,10 +1939,72 @@ button, input, select, textarea {
   .sidebar-backdrop { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.65); z-index: 35; }
   .station-grid { grid-template-columns: 1fr 1fr; }
   .clock-pill { display: none; }
+  .topbar { padding: 0 14px; gap: 10px; }
+  .topbar-left h1 { font-size: 15px; }
+  #btnRefreshAll #txtRefreshBtn { display: none; }
+  #btnRefreshAll { width: 36px; padding: 0; }
+  .workspace-scroll { padding: 14px 14px 28px; }
 }
 
 @media (max-width: 640px) {
   .kpi-row, .reservoir-grid, .station-grid { grid-template-columns: 1fr; }
+  .topbar {
+    height: auto;
+    min-height: 56px;
+    padding: 10px 12px;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .topbar-left {
+    flex: 1 1 100%;
+    gap: 10px;
+  }
+  .topbar-left h1 {
+    font-size: 14.5px;
+    white-space: normal;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    line-height: 1.28;
+  }
+  .topbar-left p {
+    display: none;
+  }
+  .topbar-right {
+    width: 100%;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  #btnRefreshAll,
+  .topbar-right .icon-btn {
+    width: 34px;
+    height: 34px;
+    flex-shrink: 0;
+  }
+  .btn-top-camip {
+    flex: 1;
+    justify-content: center;
+    height: 34px;
+    font-size: 12px;
+    padding: 0 10px;
+    white-space: nowrap;
+  }
+  .emergency-bar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+    padding: 12px 14px;
+  }
+  .emg-right {
+    width: 100%;
+  }
+  .btn-emg-open {
+    flex: 1;
+  }
+  .padded-card,
+  .map-header {
+    padding: 14px;
+  }
 }
 
 /* ==========================================================================
