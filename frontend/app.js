@@ -824,8 +824,34 @@
       )
       .join('');
 
-    container.addEventListener('change', () => loadChart());
+    const presetWrap = $('chartQuickPresets');
+    if (presetWrap) {
+      const presetMap = {
+        default: ['hoi-an', 'ai-nghia', 'cau-lau'],
+        rivers: ['hoi-an', 'cau-lau', 'ai-nghia', 'giao-thuy', 'nong-son'],
+        reservoirs: RESERVOIRS.map((r) => r.key),
+        mixed: ['dak-mi-4', 'song-tranh-2', 'hoi-an', 'ai-nghia', 'cau-lau'],
+      };
+      $$('.preset-btn[data-preset]', presetWrap).forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const keys = new Set(presetMap[btn.dataset.preset] || presetMap.default);
+          $$('input[type="checkbox"]', container).forEach((cb) => {
+            cb.checked = keys.has(cb.value);
+          });
+          $$('.preset-btn[data-preset]', presetWrap).forEach((b) => b.classList.toggle('active', b === btn));
+          loadChart();
+        });
+      });
+    }
+
+    container.addEventListener('change', () => {
+      if (presetWrap) {
+        $$('.preset-btn[data-preset]', presetWrap).forEach((b) => b.classList.remove('active'));
+      }
+      loadChart();
+    });
     $('selChartPeriod')?.addEventListener('change', () => loadChart());
+    $('selChartMode')?.addEventListener('change', () => loadChart());
   }
 
   async function loadChart() {
@@ -835,7 +861,20 @@
 
     const checkedKeys = $$('input[type="checkbox"]:checked', selector).map((el) => el.value);
     const hours = Number($('selChartPeriod')?.value || 24);
+    const scaleMode = $('selChartMode')?.value || 'delta';
+    const reservoirKeySet = new Set(RESERVOIRS.map((r) => r.key));
     const selectedItems = [...RESERVOIRS, ...RIVER_STATIONS].filter((it) => checkedKeys.includes(it.key));
+
+    const hintEl = $('chartModeHint');
+    if (hintEl) {
+      if (scaleMode === 'delta') {
+        hintEl.textContent = 'Đang hiển thị độ dâng/rút (Δm) so với đầu kỳ để thấy rõ sóng biến thiên của cả Hồ chứa (148–380m) lẫn Trạm sông (1–22m). Rê chuột vào điểm để xem cao trình thực tế.';
+      } else if (scaleMode === 'dual') {
+        hintEl.textContent = 'Đang hiển thị cao trình thực tế (m) — Tự động tách Trục Trái cho Trạm Sông và Trục Phải (nét đứt) cho Hồ Thủy Điện, tự zoom sát biên độ.';
+      } else {
+        hintEl.textContent = 'Đang chuẩn hóa 0–100% biên độ dao động của từng trạm để so sánh trực tiếp nhịp xả hồ thượng nguồn và độ trễ đỉnh triều/lũ hạ du.';
+      }
+    }
 
     if (!selectedItems.length) {
       if (state.chartInstance) {
@@ -873,20 +912,111 @@
         : d.toLocaleString('vi-VN', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
     });
 
+    const hasReservoirs = selectedItems.some((it) => reservoirKeySet.has(it.key));
+    const hasRivers = selectedItems.some((it) => !reservoirKeySet.has(it.key));
+    const useDualAxis = scaleMode === 'dual' && hasReservoirs && hasRivers;
+
     const datasets = selectedItems.map((it) => {
+      const isRes = reservoirKeySet.has(it.key);
       const mapByIso = new Map();
-      (seriesByKey[it.key] || []).forEach((r) => mapByIso.set(r.observed_at, Number(r.water_level_m)));
+      (seriesByKey[it.key] || []).forEach((r) => {
+        if (r.water_level_m != null) mapByIso.set(r.observed_at, Number(r.water_level_m));
+      });
+
+      const rawValues = sortedIso.map((iso) => (mapByIso.has(iso) ? mapByIso.get(iso) : null));
+      const validNums = rawValues.filter((v) => typeof v === 'number' && Number.isFinite(v));
+      const baseVal = validNums.length ? validNums[0] : 0;
+      const minVal = validNums.length ? Math.min(...validNums) : 0;
+      const maxVal = validNums.length ? Math.max(...validNums) : 1;
+      const span = Math.max(0.05, maxVal - minVal);
+
+      let plottedData = rawValues;
+      if (scaleMode === 'delta') {
+        plottedData = rawValues.map((v) => (v == null ? null : Number((v - baseVal).toFixed(3))));
+      } else if (scaleMode === 'norm') {
+        plottedData = rawValues.map((v) => (v == null ? null : Number((((v - minVal) / span) * 100).toFixed(1))));
+      }
+
+      const unitTag = isRes ? 'Hồ' : 'Sông';
       return {
-        label: `${it.name} (m)`,
-        data: sortedIso.map((iso) => (mapByIso.has(iso) ? mapByIso.get(iso) : null)),
+        label: `${it.name} (${unitTag})`,
+        rawName: it.name,
+        unitTag,
+        rawValues,
+        baseVal,
+        data: plottedData,
+        yAxisID: useDualAxis && isRes ? 'yRes' : 'y',
         borderColor: it.color,
         backgroundColor: `${it.color}22`,
-        borderWidth: 2.3,
-        pointRadius: sortedIso.length > 50 ? 0 : 2.5,
+        borderDash: useDualAxis && isRes ? [6, 4] : [],
+        borderWidth: 2.4,
+        pointRadius: sortedIso.length > 50 ? 0 : 2.8,
+        pointHoverRadius: 5,
         spanGaps: true,
-        tension: 0.32,
+        tension: 0.34,
       };
     });
+
+    const scales = {
+      x: {
+        ticks: { color: '#94A3B8', maxTicksLimit: 10 },
+        grid: { color: 'rgba(148, 163, 184, 0.08)' },
+      },
+      y: {
+        position: 'left',
+        beginAtZero: false,
+        grace: '14%',
+        title: {
+          display: true,
+          text:
+            scaleMode === 'delta'
+              ? 'Biến thiên Δm (so với đầu kỳ)'
+              : scaleMode === 'norm'
+                ? 'Biên độ dao động (%)'
+                : useDualAxis
+                  ? 'Trạm Sông (m)'
+                  : hasReservoirs && !hasRivers
+                    ? 'Hồ Thủy Điện (m)'
+                    : 'Mực nước (m)',
+          color: '#94A3B8',
+          font: { size: 11, weight: '600' },
+        },
+        ticks: {
+          color: '#94A3B8',
+          callback: (v) => {
+            const num = Number(v);
+            if (scaleMode === 'delta') return `${num > 0 ? '+' : ''}${num.toFixed(2)}m`;
+            if (scaleMode === 'norm') return `${Math.round(num)}%`;
+            return `${Number(num.toFixed(2))}m`;
+          },
+        },
+        grid: {
+          color: (ctx) =>
+            scaleMode === 'delta' && Math.abs(ctx.tick?.value || 0) < 0.001
+              ? 'rgba(56, 189, 248, 0.38)'
+              : 'rgba(148, 163, 184, 0.1)',
+        },
+      },
+    };
+
+    if (useDualAxis) {
+      scales.yRes = {
+        position: 'right',
+        beginAtZero: false,
+        grace: '14%',
+        title: {
+          display: true,
+          text: 'Hồ Thủy Điện (m • nét đứt)',
+          color: '#38BDF8',
+          font: { size: 11, weight: '600' },
+        },
+        ticks: {
+          color: '#38BDF8',
+          callback: (v) => `${Number(Number(v).toFixed(2))}m`,
+        },
+        grid: { drawOnChartArea: false },
+      };
+    }
 
     if (state.chartInstance) state.chartInstance.destroy();
     state.chartInstance = new Chart(canvas.getContext('2d'), {
@@ -897,13 +1027,30 @@
         maintainAspectRatio: false,
         interaction: { mode: 'index', intersect: false },
         plugins: {
-          legend: { labels: { color: '#CBD5E1' } },
-          tooltip: { backgroundColor: 'rgba(8, 15, 30, 0.94)', borderColor: 'rgba(56, 189, 248, 0.35)', borderWidth: 1 },
+          legend: { labels: { color: '#CBD5E1', usePointStyle: true, boxWidth: 9 } },
+          tooltip: {
+            backgroundColor: 'rgba(8, 15, 30, 0.95)',
+            borderColor: 'rgba(56, 189, 248, 0.4)',
+            borderWidth: 1,
+            callbacks: {
+              label: (ctx) => {
+                const ds = ctx.dataset;
+                const actual = ds.rawValues?.[ctx.dataIndex];
+                if (actual == null) return `${ds.label}: Không có số liệu`;
+                const delta = actual - (ds.baseVal || 0);
+                const deltaStr = `${delta >= 0 ? '+' : ''}${delta.toFixed(2)}m`;
+                if (scaleMode === 'delta') {
+                  return ` ${ds.label}: ${deltaStr}  •  Cao trình: ${actual.toFixed(2)}m`;
+                }
+                if (scaleMode === 'norm') {
+                  return ` ${ds.label}: ${ctx.parsed.y}% biên độ  •  Thực tế: ${actual.toFixed(2)}m (${deltaStr})`;
+                }
+                return ` ${ds.label}: ${actual.toFixed(2)}m  (${deltaStr} so với đầu kỳ)`;
+              },
+            },
+          },
         },
-        scales: {
-          x: { ticks: { color: '#94A3B8', maxTicksLimit: 10 }, grid: { color: 'rgba(148, 163, 184, 0.08)' } },
-          y: { ticks: { color: '#94A3B8', callback: (v) => `${v}m` }, grid: { color: 'rgba(148, 163, 184, 0.1)' } },
-        },
+        scales,
       },
     });
   }

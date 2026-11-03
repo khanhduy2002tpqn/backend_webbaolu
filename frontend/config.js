@@ -8,6 +8,6 @@
  * và tự động kết nối localhost:8000 khi bạn chạy thử ở máy cá nhân!
  */
 window.CAMIP_CLOUD_CONFIG = {
-  API_BASE_URL: ""
+  API_BASE_URL: "https://backend-webbaolu.onrender.com/"
 };
 

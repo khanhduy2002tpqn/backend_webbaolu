@@ -312,18 +312,34 @@
               <div>
                 <span class="sec-pill">03 • DIỄN BIẾN LỊCH SỬ</span>
                 <h2>Biểu Đồ Biến Thiên Mực Nước Theo Thời Gian</h2>
-                <p class="card-sub">Chọn một hoặc nhiều hồ chứa / trạm sông bên dưới để so sánh đường quá trình lũ</p>
+                <p class="card-sub" id="chartModeHint">Đang hiển thị độ dâng/rút (Δm) so với đầu kỳ để thấy rõ nhịp sóng của cả Hồ chứa (148–380m) lẫn Trạm sông (1–22m). Rê chuột vào điểm để xem cao trình thực tế.</p>
               </div>
 
-              <select id="selChartPeriod" class="dark-select">
-                <option value="3">3 giờ qua</option>
-                <option value="6">6 giờ qua</option>
-                <option value="12">12 giờ qua</option>
-                <option value="24" selected>24 giờ qua</option>
-                <option value="168">7 ngày qua</option>
-                <option value="336">14 ngày qua</option>
-                <option value="720">30 ngày qua</option>
-              </select>
+              <div class="chart-header-controls">
+                <select id="selChartMode" class="dark-select" title="Chế độ thang đo trục tung">
+                  <option value="delta" selected>📊 Biến thiên Δm (Rõ sóng Dâng / Rút)</option>
+                  <option value="dual">📏 Cao trình thực tế m (Tách trục Sông / Hồ)</option>
+                  <option value="norm">🌊 Chuẩn hóa % Biên độ (So pha lũ)</option>
+                </select>
+
+                <select id="selChartPeriod" class="dark-select">
+                  <option value="3">3 giờ qua</option>
+                  <option value="6">6 giờ qua</option>
+                  <option value="12">12 giờ qua</option>
+                  <option value="24" selected>24 giờ qua</option>
+                  <option value="168">7 ngày qua</option>
+                  <option value="336">14 ngày qua</option>
+                  <option value="720">30 ngày qua</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="chart-presets-bar" id="chartQuickPresets">
+              <span class="preset-label">Chọn nhanh:</span>
+              <button type="button" class="preset-btn active" data-preset="default">⭐ Hạ du tiêu biểu</button>
+              <button type="button" class="preset-btn" data-preset="rivers">🌊 Chỉ Trạm Sông</button>
+              <button type="button" class="preset-btn" data-preset="reservoirs">⚡ 4 Hồ Thủy Điện</button>
+              <button type="button" class="preset-btn" data-preset="mixed">🔀 Hồ + Sông hạ du</button>
             </div>
 
             <div id="chartStationSelector" class="chart-chips-wrap"></div>
