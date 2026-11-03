@@ -1,0 +1,7 @@
+{
+  "name": "hydro-camip-cloud-frontend",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Frontend Command Center Bão Lũ & Mô Phỏng CamIP deploy trên Vercel"
+}
+
